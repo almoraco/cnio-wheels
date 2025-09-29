@@ -11,20 +11,58 @@ plot_dir = output_dir / "plots"
 proc_dir.mkdir(parents=True, exist_ok=True)
 plot_dir.mkdir(parents=True, exist_ok=True)
 
-# --- Leer archivo, saltando hasta la fila 10 (índice 10) para que los headers estén en A11 ---
-df = pd.read_csv(input_file, sep=",", skiprows=10)  # Cambiado separador a coma
+# --- Leer archivo con diagnóstico ---
+# Primero leemos algunas líneas para ver el formato
+print("Leyendo archivo para diagnóstico...")
+
+# Intentar leer desde la fila 10 (header en A11)
+try:
+    df = pd.read_csv(input_file, sep=",", skiprows=10)
+    print("✅ Lectura exitosa con sep=','")
+except Exception as e:
+    print(f"❌ Error con sep=',': {e}")
+    # Intentar con tabulaciones
+    try:
+        df = pd.read_csv(input_file, sep="\t", skiprows=10)
+        print("✅ Lectura exitosa con sep='\\t'")
+    except Exception as e2:
+        print(f"❌ Error con sep='\\t': {e2}")
+        # Intentar auto-detectar
+        df = pd.read_csv(input_file, skiprows=10)
+        print("✅ Lectura con separador auto-detectado")
 
 # Verificar qué columnas tenemos
 print("Columnas disponibles:", df.columns.tolist())
+print("Forma del DataFrame:", df.shape)
 print("Primeras filas:")
-print(df.head())
+print(df.head(3))
 
-# Renombrar la primera columna (que debería ser "Bin") a "Datetime"
-# Usar el índice por si el nombre tiene espacios o caracteres raros
-df.rename(columns={df.columns[0]: "Datetime"}, inplace=True)
+# Limpiar nombres de columnas (quitar espacios)
+df.columns = df.columns.str.strip()
 
-# Convertir fecha
-df["Datetime"] = pd.to_datetime(df["Datetime"], dayfirst=True)
+# Renombrar la primera columna a "Datetime"
+first_col = df.columns[0]
+print(f"Primera columna: '{first_col}'")
+df.rename(columns={first_col: "Datetime"}, inplace=True)
+
+# Convertir fecha con manejo de errores
+print("Convirtiendo fechas...")
+try:
+    # Intentar formato DD/MM/YYYY
+    df["Datetime"] = pd.to_datetime(df["Datetime"], format="%d/%m/%Y %H:%M:%S")
+    print("✅ Fechas convertidas con formato DD/MM/YYYY")
+except Exception as e:
+    print(f"❌ Error con formato DD/MM/YYYY: {e}")
+    try:
+        # Intentar auto-detectar
+        df["Datetime"] = pd.to_datetime(df["Datetime"], dayfirst=True)
+        print("✅ Fechas convertidas con auto-detección")
+    except Exception as e2:
+        print(f"❌ Error con auto-detección: {e2}")
+        # Mostrar algunos valores para diagnóstico
+        print("Valores de fecha problemáticos:")
+        print(df["Datetime"].head(10).tolist())
+        raise
 
 # Pasar a formato largo
 df_long = df.melt(id_vars="Datetime", var_name="MouseID", value_name="Revolutions")
