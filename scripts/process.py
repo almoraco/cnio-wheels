@@ -14,8 +14,8 @@ plot_dir.mkdir(parents=True, exist_ok=True)
 # --- Leer archivo CSV limpio ---
 print("Leyendo archivo CSV...")
 
-# El archivo ahora está limpio, headers en primera fila
-df = pd.read_csv(input_file, sep=" ")  # Separador por espacios
+# El archivo usa tabulaciones como separador
+df = pd.read_csv(input_file, sep="\t")  # Sin skiprows, headers en primera fila
 print("✅ Archivo leído correctamente")
 
 # Verificar estructura
