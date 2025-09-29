@@ -11,9 +11,17 @@ plot_dir = output_dir / "plots"
 proc_dir.mkdir(parents=True, exist_ok=True)
 plot_dir.mkdir(parents=True, exist_ok=True)
 
-# --- Leer archivo, saltando las primeras filas ---
-df = pd.read_csv(input_file, sep="\t", skiprows=8)  # ajustar sep si es coma ","
-df.rename(columns={"Bin": "Datetime"}, inplace=True)
+# --- Leer archivo, saltando hasta la fila 10 (índice 10) para que los headers estén en A11 ---
+df = pd.read_csv(input_file, sep=",", skiprows=10)  # Cambiado separador a coma
+
+# Verificar qué columnas tenemos
+print("Columnas disponibles:", df.columns.tolist())
+print("Primeras filas:")
+print(df.head())
+
+# Renombrar la primera columna (que debería ser "Bin") a "Datetime"
+# Usar el índice por si el nombre tiene espacios o caracteres raros
+df.rename(columns={df.columns[0]: "Datetime"}, inplace=True)
 
 # Convertir fecha
 df["Datetime"] = pd.to_datetime(df["Datetime"], dayfirst=True)
@@ -65,4 +73,4 @@ for mouse, group in df_long.groupby("MouseID"):
     plt.savefig(plot_file)
     plt.close()
 
-    print(f"  ➝ Guardado {mouse_file} y {plot_file}")
+    print(f"  ➜ Guardado {mouse_file} y {plot_file}")
