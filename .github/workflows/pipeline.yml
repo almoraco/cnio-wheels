@@ -20,7 +20,7 @@ jobs:
         run: pip install pandas
 
       - name: Run preprocessing
-        run: python scripts/preprocess.py
+        run: python scripts/process.py
 
       - name: Set up R
         uses: r-lib/actions/setup-r@v2
