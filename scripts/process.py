@@ -11,26 +11,21 @@ plot_dir = output_dir / "plots"
 proc_dir.mkdir(parents=True, exist_ok=True)
 plot_dir.mkdir(parents=True, exist_ok=True)
 
-# --- Leer archivo con el separador correcto ---
-print("Leyendo archivo...")
+# --- Leer archivo CSV limpio ---
+print("Leyendo archivo CSV...")
 
-# El archivo usa tabulaciones como separador
-df = pd.read_csv(input_file, sep="\t", skiprows=10)
-print("✅ Lectura exitosa con sep='\\t'")
+# El archivo ahora está limpio, headers en primera fila
+df = pd.read_csv(input_file, sep=" ")  # Separador por espacios
+print("✅ Archivo leído correctamente")
 
-# Verificar qué columnas tenemos
+# Verificar estructura
 print("Columnas disponibles:", df.columns.tolist())
 print("Forma del DataFrame:", df.shape)
 print("Primeras filas:")
 print(df.head(3))
 
-# Limpiar nombres de columnas (quitar espacios)
-df.columns = df.columns.str.strip()
-
-# Renombrar la primera columna a "Datetime"
-first_col = df.columns[0]
-print(f"Primera columna: '{first_col}'")
-df.rename(columns={first_col: "Datetime"}, inplace=True)
+# Renombrar la primera columna a "Datetime" 
+df.rename(columns={"Time": "Datetime"}, inplace=True)
 
 # Convertir fecha
 print("Convirtiendo fechas...")
