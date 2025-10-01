@@ -13,6 +13,7 @@ dependencies:
   - r-ggplot2
   - r-dplyr
   - r-readr
+  - r-lubridate
 
   # utilidades de entorno
   - pip
