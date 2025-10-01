@@ -6,6 +6,7 @@ library(readr)
 library(lubridate)
 library(optparse)
 library(tidyr)
+library(grid) # para poner dos colores en el fondo del gráfico
 
 
 # Opciones de línea de comandos
@@ -14,12 +15,12 @@ option_list <- list(
               help = "Initial Date/time of the graph in format dd/mm/yyyy HH:MM:SS",
               metavar = "DATETIME"),
   make_option(c("--end"), type = "character", default = NULL,
-              help = "Last Date/time of the graphin format dd/mm/yyyy HH:MM:SS",
+              help = "Last Date/time of the graph in format dd/mm/yyyy HH:MM:SS",
               metavar = "DATETIME"),
   make_option(c("--group1"), type = "character", default = NULL,
-              help = "Columns for group 1 (mouse1, mouse2, etc.)"),
+              help = "Mice for group 1 (mouse1,mouse2,etc.)"),
   make_option(c("--group2"), type = "character", default = NULL,
-              help = "Columns for group 2 (mouse3, mouse4, etc.)")
+              help = "Mice for group 2 (mouse3,mouse4,etc.)")
 )
 
 opt_parser <- OptionParser(
@@ -27,7 +28,7 @@ opt_parser <- OptionParser(
   usage = "Usage: %prog [options]",
   description = "Script to plot the revolutions (hourly).
 Date/time should be indicated as dd/mm/yyyy HH:MM:SS.
-Use the column names to define each group."
+Mice names should be separated by commas WITHOUT spaces."
 )
 
 opt <- parse_args(opt_parser)
@@ -60,59 +61,49 @@ if (nrow(data) == 0) stop("No hay datos después de aplicar filtros de fecha.")
 
 
 # Procesar grupos personalizados
-
 if (!is.null(opt$group1) || !is.null(opt$group2)) {
   # Si se especifican grupos personalizados
-  data_long <- data %>%
-    select(Datetime, Period, Revolutions) %>%
-    filter(!is.na(Revolutions))
   
-  # Crear lista de grupos
+  # Crear lista de grupos con los IDs de ratones
   grupos <- list()
   if (!is.null(opt$group1)) {
-    cols_group1 <- strsplit(opt$group1, ",")[[1]]
-    cols_group1 <- trimws(cols_group1)  # Eliminar espacios
-    cat("Group 1:", paste(cols_group1, collapse = ", "), "\n")
-    grupos[["Group 1"]] <- cols_grupo1
+    mice_group1 <- strsplit(opt$group1, ",")[[1]]
+    mice_group1 <- trimws(mice_group1)  # Eliminar espacios
+    cat("Group 1:", paste(mice_group1, collapse = ", "), "\n")
+    grupos[["Group 1"]] <- mice_group1
   }
   
   if (!is.null(opt$group2)) {
-    cols_group2 <- strsplit(opt$group2, ",")[[1]]
-    cols_group2 <- trimws(cols_group2)  # Eliminar espacios
-    cat("Group 2:", paste(cols_group2, collapse = ", "), "\n")
-    grupos[["Group 2"]] <- cols_grupo2
+    mice_group2 <- strsplit(opt$group2, ",")[[1]]
+    mice_group2 <- trimws(mice_group2)  # Eliminar espacios
+    cat("Group 2:", paste(mice_group2, collapse = ", "), "\n")
+    grupos[["Group 2"]] <- mice_group2
   }
   
-  # Verificar que las columnas existen en el CSV original
-  data_raw <- read_csv("output/processed/revolutions_hourly.csv")
-  todas_columnas <- names(data_raw)
+  # Verificar que los MouseID existen en los datos
+  todos_ratones <- unique(data$MouseID)
   
-  # Reestructurar datos con los grupos especificados
-  data_list <- list()
+  # Asignar grupo a cada ratón
+  data <- data %>%
+    mutate(Period = case_when(
+      MouseID %in% grupos[["Group 1"]] ~ "Group 1",
+      MouseID %in% grupos[["Group 2"]] ~ "Group 2",
+      TRUE ~ NA_character_
+    )) %>%
+    filter(!is.na(Period))  # Filtrar solo los ratones en los grupos especificados
   
+  # Verificar si hay ratones no encontrados
   for (grupo_nombre in names(grupos)) {
-    columnas <- grupos[[grupo_nombre]]
-    
-    # Verificar que todas las columnas existen
-    columnas_faltantes <- columnas[!columnas %in% todas_columnas]
-    if (length(columnas_faltantes) > 0) {
-      stop("Columnas no encontradas en el CSV: ", paste(columnas_faltantes, collapse = ", "))
+    ratones_faltantes <- grupos[[grupo_nombre]][!grupos[[grupo_nombre]] %in% todos_ratones]
+    if (length(ratones_faltantes) > 0) {
+      warning("Ratones no encontrados en ", grupo_nombre, ": ", 
+              paste(ratones_faltantes, collapse = ", "))
     }
-    
-    # Seleccionar y transformar datos para este grupo
-    temp_data <- data_raw %>%
-      filter(Datetime >= min(data$Datetime) & Datetime <= max(data$Datetime)) %>%
-      select(Datetime, all_of(columnas)) %>%
-      pivot_longer(cols = all_of(columnas), 
-                   names_to = "Mouse", 
-                   values_to = "Revolutions") %>%
-      mutate(Period = grupo_nombre)
-    
-    data_list[[grupo_nombre]] <- temp_data
   }
   
-  # Combinar todos los grupos
-  data <- bind_rows(data_list)
+  if (nrow(data) == 0) {
+    stop("No se encontraron datos para los ratones especificados")
+  }
 }
 
 
@@ -136,14 +127,42 @@ stats_data <- stats_data %>%
                                                 units = "hours")))
 
 
-# Grafica
-p <- ggplot(stats_data, aes(x = hours_from_start, y = mean_rev, color = Period, fill = Period)) +
+# Definir etiquetas y colores
+etiquetas_grupos <- c(
+  "Group 1" = expression("control cre"^"+"),
+  "Group 2" = expression("muscle-p38α"^"ko")
+)
+
+colores_personalizados <- c("Group 1" = "black",  
+                            "Group 2" = "#009e73")
+
+# Gráfica
+p <- ggplot(stats_data, aes(x = hours_from_start, y = mean_rev, 
+                            color = Period)) +
+  # Añadir primera noche
+  annotation_custom(
+    grob = rectGrob(gp = gpar(fill = "grey90", col = NA)),
+    xmin = 12, xmax = 24, ymin = -Inf, ymax = Inf
+  ) +
+  # Añadir segunda noche
+  annotation_custom(
+    grob = rectGrob(gp = gpar(fill = "grey90", col = NA)),
+    xmin = 36, xmax = 48, ymin = -Inf, ymax = Inf
+  ) +
   geom_line(linewidth = 1) +
-  geom_ribbon(aes(ymin = mean_rev - sem_rev, ymax = mean_rev + sem_rev), alpha = 0.2, color = NA) +
+  geom_point(na.rm = TRUE, size = 2) +
+  geom_errorbar(aes(ymin = mean_rev - sem_rev, 
+                    ymax = mean_rev + sem_rev), 
+                width = 0.3, na.rm = TRUE) +
+  #geom_ribbon(aes(ymin = mean_rev - sem_rev, ymax = mean_rev + sem_rev,
+                  #fill = Period), alpha = 0.2) +
+  scale_color_manual(values = colores_personalizados,
+                     labels = etiquetas_grupos) +
   labs(
     title = "Voluntary activity",
     x = "Time (hours)",
-    y = "Revolutions (no.)"
+    y = "Revolutions (no.)",
+    color = "Genotype:"
   ) +
   theme_bw() +
   theme(
@@ -161,12 +180,14 @@ p <- ggplot(stats_data, aes(x = hours_from_start, y = mean_rev, color = Period, 
     panel.border = element_rect(color = "black", fill = NA, linewidth = 1),
     panel.background = element_blank()
   ) +
-  scale_x_continuous(limits = c(0,48), breaks = seq(0, 48, by = 6))
+  scale_x_continuous(limits = c(0,48), breaks = seq(0, 48, by = 6), 
+                     expand = c(0, 0)) +
+  scale_y_continuous(limits = c(0,1200), breaks = seq(0, 1200, by = 300), 
+                     expand = c(0, 0))
 
 p
 
-# -----------------------------
 # Guardar gráfico
-# -----------------------------
-ggsave("output/plots/revolutions_plot.png", p, width = 10, height = 6)
-cat("Plot saved at en output/plots/revolutions_plot.png\n")
+ggsave("output/plots/revolutions_plot.png", p,
+       width = 8, height = 5, dpi = 300)
+cat("Plot saved at output/plots/revolutions_plot.png\n")
