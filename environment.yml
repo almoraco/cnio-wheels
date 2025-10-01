@@ -12,6 +12,7 @@ dependencies:
   - r-base=4.3
   - r-dplyr
   - r-ggplot2
+  - r-grid
   - r-lubridate
   - r-optparse
   - r-readr
