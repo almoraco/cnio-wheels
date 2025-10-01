@@ -5,10 +5,16 @@ The MED Associates, Inc. Wheel Manager Software record running data from the Wir
 
 ---
 
-## Installation
+## Installation (Terminal)
 
-> ✅ Optionally create a conda environment (recommended):
+Once in the folder you want to work, clone the repository:
 > ```bash
-> conda create -n shortstop python=3.9
-> conda activate shortstop
+> git clone https://github.com/almoraco/cnio-wheels.git
+> cd cnio-wheels
 > ```
+
+Then, create a conda environment and activate it:
+```bash
+conda env create -f environment.yml
+conda activate wheels
+```
