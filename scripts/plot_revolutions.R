@@ -4,9 +4,29 @@ rm(list = ls())
 library(ggplot2)
 library(dplyr)
 library(readr)
+library(lubridate)
+
+# Leer argumentos de línea de comandos
+args <- commandArgs(trailingOnly = TRUE)
 
 # Leer datos procesados
 data <- read_csv("output/processed/revolutions_hourly.csv")
+
+# Parsear la columna Datetime
+data$Datetime <- parse_date_time(data$Datetime, orders = c("dmy HMS", "ymd HMS", "mdy HMS"))
+
+# Aplicar filtros de fecha si se proporcionan
+if (length(args) >= 1 && args[1] != "") {
+  fecha_inicio <- parse_date_time(args[1], orders = c("dmy HMS", "ymd HMS", "dmy", "ymd"))
+  cat("Filtrando desde:", format(fecha_inicio), "\n")
+  data <- data %>% filter(Datetime >= fecha_inicio)
+}
+
+if (length(args) >= 2 && args[2] != "") {
+  fecha_fin <- parse_date_time(args[2], orders = c("dmy HMS", "ymd HMS", "dmy", "ymd"))
+  cat("Filtrando hasta:", format(fecha_fin), "\n")
+  data <- data %>% filter(Datetime <= fecha_fin)
+}
 
 # Calcular estadísticos
 stats_data <- data %>%
@@ -46,3 +66,4 @@ p <- ggplot(stats_data, aes(x = Datetime, y = mean_rev, color = Period, fill = P
 
 # Guardar
 ggsave("output/plots/revolutions_plot.png", p, width = 10, height = 6)
+cat("Gráfica guardada en output/plots/revolutions_plot.png\n")
