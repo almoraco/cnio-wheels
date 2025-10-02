@@ -35,7 +35,7 @@ opt <- parse_args(opt_parser)
 
 
 # Leer datos procesados
-data <- read_csv("output/processed/revolutions_hourly.csv")
+data <- read_csv("output/processed/activity_hourly.csv")
 
 # Filtrar filas con Datetime NA (por seguridad)
 data <- data %>% filter(!is.na(Datetime))
@@ -96,7 +96,7 @@ if (!is.null(opt$group1) || !is.null(opt$group2)) {
   for (grupo_nombre in names(grupos)) {
     ratones_faltantes <- grupos[[grupo_nombre]][!grupos[[grupo_nombre]] %in% todos_ratones]
     if (length(ratones_faltantes) > 0) {
-      warning("Ratones no encontrados en ", grupo_nombre, ": ", 
+      warning("These mice weren't found at ", grupo_nombre, ": ", 
               paste(ratones_faltantes, collapse = ", "))
     }
   }
